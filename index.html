@@ -4,24 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Logbook dr. Benny v11</title>
+    <title>Logbook dr. Benny v12 Ultra</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#007AFF">
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         :root { --primary: #007AFF; --bg: #F2F2F7; --success: #34C759; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding-bottom: 100px; color: #1C1C1E; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding-bottom: 100px; color: #1C1C1E; }
         .header { background: linear-gradient(135deg, #007AFF, #5856D6); color: white; padding: 45px 20px 25px; border-radius: 0 0 20px 20px; text-align: center; }
         .container { padding: 15px; max-width: 500px; margin: auto; }
         .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 15px; }
         label { display: block; font-size: 11px; font-weight: bold; color: #8E8E93; text-transform: uppercase; margin: 15px 0 5px; }
         select, input, textarea { width: 100%; padding: 14px; border: 1px solid #D1D1D6; border-radius: 12px; font-size: 16px; box-sizing: border-box; background: #FFF; color: #000; }
-        .btn { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 14px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,122,255,0.3); }
+        .btn { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 14px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; }
         .btn-ocr { background: #5856D6; margin-bottom: 15px; }
         .tab-bar { position: fixed; bottom: 0; width: 100%; background: white; display: flex; border-top: 1px solid #D1D1D6; padding-bottom: env(safe-area-inset-bottom); }
-        .tab-item { flex: 1; text-align: center; padding: 12px; color: #8E8E93; font-size: 11px; cursor: pointer; }
+        .tab-item { flex: 1; text-align: center; padding: 12px; color: #8E8E93; font-size: 11px; }
         .tab-item.active { color: var(--primary); font-weight: bold; }
-        .log-entry { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 5px solid var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .log-entry { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 5px solid var(--primary); }
         .hidden { display: none; }
         #ocrLoader { text-align: center; font-size: 12px; color: #007AFF; margin-top: 10px; font-weight: bold; }
     </style>
@@ -35,9 +35,9 @@
     <div class="container">
         <div class="card" style="border: 2px dashed #5856D6; background: #F8F8FF;">
             <label style="color:#5856D6; text-align:center;">Scan Foto SIMRS</label>
-            <button class="btn btn-ocr" onclick="document.getElementById('inputFoto').click()">📸 AMBIL / UPLOAD FOTO</button>
+            <button class="btn btn-ocr" onclick="document.getElementById('inputFoto').click()">📸 SCAN PASIEN</button>
             <input type="file" id="inputFoto" accept="image/*" hidden onchange="prosesOCR(event)">
-            <div id="ocrLoader" class="hidden">🔄 Sedang Membaca Data... <span id="ocrProgress">0%</span></div>
+            <div id="ocrLoader" class="hidden">🔄 Memproses... <span id="ocrProgress">0%</span></div>
         </div>
         <div class="card">
             <label>Lokasi Kerja</label>
@@ -55,8 +55,8 @@
                 <option value="Jawab Konsul">Jawab Konsul</option>
             </select>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div><label>No. RM</label><input type="text" id="norm" placeholder="00..." oninput="autoPasien()"></div>
-                <div><label>Nama Pasien</label><input type="text" id="pasien" placeholder="Nama..."></div>
+                <div><label>No. RM</label><input type="text" id="norm" placeholder="00.00.00.00" oninput="autoPasien()"></div>
+                <div><label>Nama Pasien</label><input type="text" id="pasien" placeholder="NAMA PASIEN"></div>
             </div>
             <label>Pilih Ruangan</label>
             <select id="ruangan"></select>
@@ -67,12 +67,9 @@
     </div>
 </div>
 <div id="pageRekap" class="container hidden">
-    <h3 style="margin-top:20px;">Riwayat Logbook</h3>
+    <h3>Riwayat Logbook</h3>
     <div id="listRekap"></div>
     <button class="btn" onclick="exportJSON()">Export JSON</button>
-    <button class="btn" style="background:#34C759;" onclick="document.getElementById('importFile').click()">Import JSON</button>
-    <input id="importFile" type="file" accept="application/json" style="display:none" onchange="importJSON(event)">
-    <button class="btn" style="background:#FF3B30; margin-top:30px;" onclick="hapusSemua()">Reset Seluruh Data</button>
 </div>
 <div class="tab-bar">
     <div class="tab-item active" id="tab1" onclick="pindahTab('input')">📝<br>Input</div>
@@ -89,41 +86,36 @@
         const selRuangan = document.getElementById('ruangan');
         let opsi = DATA_RS[lok] ? [...DATA_RS[lok]] : [];
         if (["Doppler Carotis", "Doppler Tungkai", "Treadmil", "Jawab Konsul"].includes(kat)) opsi.unshift("IGD");
-        if (kat !== "Visite") opsi.push(lok === "RSUD dr. Adnaan WD" ? "Poli Jantung RSUD" : "Poli Jantung Yarsi");
         selRuangan.innerHTML = opsi.map(r => `<option value="${r}">${r}</option>`).join('');
     }
     async function prosesOCR(event) {
         const file = event.target.files[0];
         if (!file) return;
         const loader = document.getElementById('ocrLoader');
-        const progressDisp = document.getElementById('ocrProgress');
         loader.classList.remove('hidden');
         try {
             const result = await Tesseract.recognize(file, 'ind', {
-                logger: m => { if (m.status === 'recognizing text') progressDisp.innerText = Math.round(m.progress * 100) + '%'; }
+                logger: m => { if (m.status === 'recognizing text') document.getElementById('ocrProgress').innerText = Math.round(m.progress * 100) + '%'; }
             });
             ekstrakDataPintar(result.data.text);
             loader.classList.add('hidden');
-            alert("✅ Scan Selesai!");
-        } catch (err) {
-            alert("❌ Gagal membaca foto.");
-            loader.classList.add('hidden');
-        }
+        } catch (err) { alert("Gagal scan."); loader.classList.add('hidden'); }
     }
     function ekstrakDataPintar(text) {
         const rmMatch = text.match(/(\d{2}\.\d{2}\.\d{2}\.\d{2})/);
         if (rmMatch) {
             document.getElementById('norm').value = rmMatch[0];
             const lines = text.split('\n');
-            const rmLineIndex = lines.findIndex(l => l.includes(rmMatch[0]));
-            if (rmLineIndex !== -1) {
-                let rawName = lines[rmLineIndex].replace(rmMatch[0], '').replace(/[^a-zA-Z ]/g, '').trim();
-                if (rawName.length < 3 && rmLineIndex > 0) rawName = lines[rmLineIndex - 1].replace(/[^a-zA-Z ]/g, '').trim();
-                document.getElementById('pasien').value = rawName.toUpperCase();
+            const idx = lines.findIndex(l => l.includes(rmMatch[0]));
+            if (idx !== -1) {
+                let name = lines[idx].split('-').pop().replace(rmMatch[0], '').replace(/[^a-zA-Z ]/g, '').trim();
+                if (name.length < 3 && idx > 0) name = lines[idx-1].replace(/[^a-zA-Z ]/g, '').trim();
+                document.getElementById('pasien').value = name.toUpperCase();
             }
         }
-        const allRooms = [...DATA_RS["RSUD dr. Adnaan WD"], ...DATA_RS["RSI Ibnu Sina"], "CVCU", "IGD"];
-        for (let r of allRooms) { if (text.toUpperCase().includes(r.toUpperCase())) { document.getElementById('ruangan').value = r; break; } }
+        ["TERATAI", "CVCU", "CEMPAKA", "MAWAR"].forEach(kw => {
+            if (text.toUpperCase().includes(kw)) document.getElementById('ruangan').value = kw;
+        });
     }
     function autoPasien() {
         const db = JSON.parse(localStorage.getItem('db_pasien_benny') || '{}');
@@ -132,7 +124,7 @@
     }
     function prosesSimpan() {
         const rm = document.getElementById('norm').value, nm = document.getElementById('pasien').value, rg = document.getElementById('ruangan').value;
-        if(!rm || !nm || !rg) { alert("⚠️ Lengkapi data!"); return; }
+        if(!rm || !nm) return alert("Lengkapi data!");
         const payload = { waktu: new Date().toLocaleString('id-ID'), rs: document.getElementById('lokasi').value, kegiatan: document.getElementById('kategori').value, rm, nama: nm, ruang: rg, note: document.getElementById('catatan').value };
         let riwayat = JSON.parse(localStorage.getItem('riwayat_benny') || '[]');
         riwayat.unshift(payload);
@@ -140,8 +132,8 @@
         let db = JSON.parse(localStorage.getItem('db_pasien_benny') || '{}');
         db[rm] = nm;
         localStorage.setItem('db_pasien_benny', JSON.stringify(db));
-        alert("✅ Tersimpan.");
-        document.getElementById('norm').value = ""; document.getElementById('pasien').value = ""; document.getElementById('catatan').value = "";
+        alert("Simpan Berhasil!");
+        document.getElementById('norm').value = ""; document.getElementById('pasien').value = "";
     }
     function pindahTab(t) {
         document.getElementById('pageInput').classList.toggle('hidden', t !== 'input');
@@ -150,26 +142,8 @@
         document.getElementById('tab2').classList.toggle('active', t === 'rekap');
         if(t === 'rekap') {
             const logs = JSON.parse(localStorage.getItem('riwayat_benny') || '[]');
-            document.getElementById('listRekap').innerHTML = logs.map(l => `
-                <div class="log-entry">
-                    <div style="font-weight:bold;">${l.nama}</div>
-                    <div style="font-size:12px; color:#666;">RM: ${l.rm} | ${l.ruang}</div>
-                    <div style="font-size:12px; color:var(--primary); font-weight:600;">${l.kegiatan}</div>
-                </div>`).join('');
+            document.getElementById('listRekap').innerHTML = logs.map(l => `<div class="log-entry"><b>${l.nama}</b><br><small>${l.rm} | ${l.ruang}</small></div>`).join('');
         }
-    }
-    function hapusSemua() { if(confirm("Hapus semua?")) { localStorage.removeItem('riwayat_benny'); pindahTab('rekap'); } }
-    function exportJSON() {
-        const data = localStorage.getItem('riwayat_benny') || '[]';
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'logbook_benny.json'; a.click();
-    }
-    function importJSON(event) {
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = function(e) { localStorage.setItem('riwayat_benny', JSON.stringify(JSON.parse(e.target.result))); pindahTab('rekap'); };
-        reader.readAsText(file);
     }
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
     sinkronRuangan();
