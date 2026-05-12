@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Logbook dr. Benny v14 Universal</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007AFF">
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root { --primary: #007AFF; --bg: #F2F2F7; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding-bottom: 100px; color: #1C1C1E; }
+        .header { background: linear-gradient(135deg, #007AFF, #5856D6); color: white; padding: 45px 20px 25px; border-radius: 0 0 20px 20px; text-align: center; }
+        .container { padding: 15px; max-width: 500px; margin: auto; }
+        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        label { display: block; font-size: 11px; font-weight: bold; color: #8E8E93; text-transform: uppercase; margin: 15px 0 5px; }
+        input, select, textarea { width: 100%; padding: 14px; border: 1px solid #D1D1D6; border-radius: 12px; font-size: 16px; box-sizing: border-box; background: #FFF; }
+        .btn { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 14px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .btn-ocr { background: #5856D6; margin-bottom: 15px; }
+        .hidden { display: none; }
+        #ocrLoader { text-align: center; font-size: 13px; color: #007AFF; margin: 10px 0; font-weight: bold; }
+        .tab-bar { position: fixed; bottom: 0; width: 100%; background: white; display: flex; border-top: 1px solid #D1D1D6; padding-bottom: env(safe-area-inset-bottom); }
+        .tab-item { flex: 1; text-align: center; padding: 12px; color: #8E8E93; font-size: 11px; cursor: pointer; }
+        .tab-item.active { color: var(--primary); font-weight: bold; }
+        .log-entry { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 5px solid var(--primary); }
+    </style>
+</head>
+<body>
+
+<div id="pageInput">
+    <div class="header">
+        <h2 style="margin:0;">Logbook Elektronik</h2>
+        <p style="margin:5px 0 0; opacity: 0.9;">dr. Benny, Sp.JP</p>
+    </div>
+    <div class="container">
+        <div class="card" style="border: 2px dashed #5856D6; background: #F8F8FF; text-align:center;">
+            <label style="color:#5856D6;">📸 Scan Layar SIMRS Pasien</label>
+            <button class="btn btn-ocr" onclick="document.getElementById('inputFoto').click()">AMBIL FOTO MONITOR</button>
+            <input type="file" id="inputFoto" accept="image/*" hidden onchange="prosesOCR(event)">
+            <div id="ocrLoader" class="hidden">🔄 Membaca Data Pasien... <span id="ocrProgress">0%</span></div>
+        </div>
+
+        <div class="card">
+            <label>Lokasi Kerja</label>
+            <select id="lokasi" onchange="sinkronRuangan()">
+                <option value="RSUD dr. Adnaan WD">RSUD dr. Adnaan WD</option>
+                <option value="RSI Ibnu Sina">RSI Ibnu Sina Yarsi</option>
+            </select>
+            <label>No. RM</label>
+            <input type="text" id="norm" placeholder="Otomatis dari scan..." oninput="autoPasien()">
+            <label>Nama Pasien</label>
+            <input type="text" id="pasien" placeholder="Otomatis dari scan...">
+            <label>Ruangan</label>
+            <select id="ruangan"></select>
+            <label>Catatan/Tindakan</label>
+            <textarea id="catatan" rows="2" placeholder="Ketik tindakan medis..."></textarea>
+            <button class="btn" style="margin-top:20px;" onclick="prosesSimpan()">SIMPAN KE LOGBOOK</button>
+        </div>
+    </div>
+</div>
+
+<div id="pageRekap" class="container hidden">
+    <h3>Riwayat Logbook</h3>
+    <div id="listRekap"></div>
+</div>
+
+<div class="tab-bar">
+    <div class="tab-item active" id="tab1" onclick="pindahTab('input')">📝<br>Input</div>
+    <div class="tab-item" id="tab2" onclick="pindahTab('rekap')">📊<br>Riwayat</div>
+</div>
+
+<script>
+    const DATA_RS = {
+        "RSUD dr. Adnaan WD": ["ICU", "CVCU", "HCU", "PICU", "Melati", "Mawar", "Dahlia", "Anggrek", "Teratai", "Cempaka 1", "Cempaka 2"],
+        "RSI Ibnu Sina": ["ICU", "Arraudah", "AsySyifa", "Arrafah", "Azzahra"]
+    };
+
+    function sinkronRuangan() {
+        const lok = document.getElementById('lokasi').value;
+        const sel = document.getElementById('ruangan');
+        let opsi = DATA_RS[lok] || [];
+        sel.innerHTML = opsi.map(r => `<option value="${r}">${r}</option>`).join('');
+    }
+
+    async function prosesOCR(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const loader = document.getElementById('ocrLoader');
+        loader.classList.remove('hidden');
+        try {
+            const result = await Tesseract.recognize(file, 'ind', {
+                logger: m => { if (m.status === 'recognizing text') document.getElementById('ocrProgress').innerText = Math.round(m.progress * 100) + '%'; }
+            });
+            ekstrakDataUniversal(result.data.text);
+            loader.classList.add('hidden');
+        } catch (err) { alert("Gagal Membaca Gambar"); loader.classList.add('hidden'); }
+    }
+
+    function ekstrakDataUniversal(text) {
+        console.log("Raw OCR Text:", text);
+        
+        // Membersihkan teks dari gangguan garis monitor
+        const cleanText = text.replace(/[,;]/g, '.'); 
+        
+        // 1. Mencari No RM (Pola XX.XX.XX.XX)
+        const rmMatch = cleanText.match(/(\d{2}\.\d{2}\.\d{2}\.\d{2})/);
+        
+        if (rmMatch) {
+            const foundRM = rmMatch[0];
+            document.getElementById('norm').value = foundRM;
+
+            // 2. Mencari Nama Pasien secara Universal
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+            let foundName = "";
+
+            lines.forEach((line, index) => {
+                if (line.includes(foundRM)) {
+                    // Cek apakah Nama ada di baris yang sama (setelah No RM atau tanda -)
+                    let nameCandidate = line.split(foundRM)[1] || "";
+                    nameCandidate = nameCandidate.replace(/[^a-zA-Z\s]/g, '').trim();
+
+                    if (nameCandidate.length > 3) {
+                        foundName = nameCandidate;
+                    } else if (index > 0) {
+                        // Jika tidak ada di baris RM, cek baris tepat di atasnya (Tampilan Kunjungan Pasien)
+                        foundName = lines[index-1].replace(/[^a-zA-Z\s]/g, '').trim();
+                    }
+                }
+            });
+
+            if (foundName) {
+                document.getElementById('pasien').value = foundName.toUpperCase();
+            }
+        }
+
+        // 3. Deteksi Ruangan Universal
+        const upperText = text.toUpperCase();
+        ["TERATAI", "CVCU", "CEMPAKA", "MAWAR", "ICU", "MELATI", "DAHLIA"].forEach(kw => {
+            if (upperText.includes(kw)) {
+                const sel = document.getElementById('ruangan');
+                for (let i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value.toUpperCase().includes(kw)) {
+                        sel.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+        });
+
+        // 4. Sinkronisasi dengan Database Lokal (Auto-fill jika RM sudah pernah disimpan)
+        autoPasien();
+    }
+
+    function autoPasien() {
+        const db = JSON.parse(localStorage.getItem('db_pasien_benny') || '{}');
+        const rm = document.getElementById('norm').value;
+        if(db[rm]) document.getElementById('pasien').value = db[rm];
+    }
+
+    function prosesSimpan() {
+        const nm = document.getElementById('pasien').value;
+        const rm = document.getElementById('norm').value;
+        if(!nm || !rm) return alert("Mohon lengkapi No. RM dan Nama!");
+        
+        let riwayat = JSON.parse(localStorage.getItem('riwayat_benny') || '[]');
+        riwayat.unshift({ 
+            nama: nm, 
+            rm: rm, 
+            ruang: document.getElementById('ruangan').value, 
+            waktu: new Date().toLocaleString('id-ID'),
+            note: document.getElementById('catatan').value
+        });
+        localStorage.setItem('riwayat_benny', JSON.stringify(riwayat));
+
+        let db = JSON.parse(localStorage.getItem('db_pasien_benny') || '{}');
+        db[rm] = nm;
+        localStorage.setItem('db_pasien_benny', JSON.stringify(db));
+
+        alert("Data Berhasil Disimpan!");
+        document.getElementById('norm').value = ""; 
+        document.getElementById('pasien').value = "";
+        document.getElementById('catatan').value = "";
+    }
+
+    function pindahTab(t) {
+        document.getElementById('pageInput').classList.toggle('hidden', t !== 'input');
+        document.getElementById('pageRekap').classList.toggle('hidden', t !== 'rekap');
+        document.getElementById('tab1').classList.toggle('active', t === 'input');
+        document.getElementById('tab2').classList.toggle('active', t === 'rekap');
+        if(t === 'rekap') {
+            const logs = JSON.parse(localStorage.getItem('riwayat_benny') || '[]');
+            document.getElementById('listRekap').innerHTML = logs.map(l => `<div class="log-entry"><b>${l.nama}</b><br><small>${l.rm} | ${l.ruang}</small></div>`).join('');
+        }
+    }
+    sinkronRuangan();
+</script>
+</body>
+</html>
