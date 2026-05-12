@@ -1,0 +1,16 @@
+{
+  "name": "Logbook dr. Benny",
+  "short_name": "Logbook",
+  "start_url": "./LogbookV5_fixed.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F2F2F7",
+  "theme_color": "#007AFF",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/822/822143.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
